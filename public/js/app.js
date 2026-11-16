@@ -1,94 +1,142 @@
-const userForm = document.getElementById("userForm");
-const userList = document.getElementById("userList");
+const itemForm = document.getElementById("itemForm");
+const itemList = document.getElementById("itemList");
+const reservationForm = document.getElementById("reservationForm");
+const reservationList = document.getElementById("reservationList");
 const msg = document.getElementById("msg");
 
 function showMessage(text, type = "success") {
     msg.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
-    setTimeout(() => (msg.innerHTML = ""), 2500);
+    setTimeout(() => (msg.innerHTML = ""), 3000);
 }
 
-async function loadOrders() {
+// --- LOAD ITEMS ---
+async function loadItems() {
     try {
-        const res = await fetch("/api/orders");
-        const data = await res.json();
-        console.log(data);
-    } catch (err) {
-        console.error("Error loading orders:", err);
-    }
-}
-loadOrders();
-
-async function loadUsers() {
-    try {
-        const res = await fetch("/api/users");
-        const users = await res.json();
+        const res = await fetch("/api/items");
+        const items = await res.json();
         
-        userList.innerHTML = "";
-
-        if (!users || users.length === 0) {
-            userList.innerHTML = '<div class="text-muted p-2">No users found.</div>';
+        itemList.innerHTML = "";
+        if (!items || items.length === 0) {
+            itemList.innerHTML = '<div class="text-muted p-2">No items found.</div>';
             return;
         }
 
-        users.forEach(u => {
-            const item = document.createElement("div");
-            item.className = "list-group-item d-flex justify-content-between align-items-center";
-            // Check for either username or name so it displays correctly
-            const displayName = u.username || u.name || "Unknown User";
-            
-            item.innerHTML = `
+        items.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "list-group-item d-flex justify-content-between align-items-center";
+            div.innerHTML = `
                 <div>
-                    <div class="fw-semibold">${displayName}</div>
-                    <div class="text-muted">${u.email}${u.age ? " • Age " + u.age : ""}</div>
+                    <div class="fw-semibold">${item.item_name} <span class="badge bg-secondary">${item.category}</span></div>
+                    <div class="text-muted small">Qty: ${item.quantity} | Available: ${item.available_quantity}</div>
+                    <div class="text-secondary font-monospace" style="font-size: 0.7rem;">ID: ${item._id}</div>
                 </div>
-                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${item._id}')">Delete</button>
             `;
-
-            item.querySelector("button").addEventListener("click", async () => {
-                await fetch(`/api/users/${u._id}`, { method: "DELETE" });
-                showMessage("User deleted", "warning");
-                loadUsers();
-            });
-
-            userList.appendChild(item);
+            itemList.appendChild(div);
         });
     } catch (err) {
-        console.error("Error loading users:", err);
-        userList.innerHTML = '<div class="text-danger p-2">Failed to load users.</div>';
+        console.error("Error loading items:", err);
     }
 }
 
-userForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const formData = new FormData(userForm);
-    
-    // Map the form's "name" input to "username" and provide a default password if required by the model
-    const payload = {
-        username: formData.get("name"),
-        email: formData.get("email"),
-        password: "TempPassword123!", // Satisfies backend password requirement
-    };
-    
-    const ageVal = formData.get("age");
-    if (ageVal && ageVal !== "") {
-        payload.age = Number(ageVal);
-    }
+// --- LOAD RESERVATIONS ---
+async function loadReservations() {
+    try {
+        const res = await fetch("/api/reservations");
+        const reservations = await res.json();
+        
+        reservationList.innerHTML = "";
+        if (!reservations || reservations.length === 0) {
+            reservationList.innerHTML = '<div class="text-muted p-2">No reservations found.</div>';
+            return;
+        }
 
-    const res = await fetch("/api/users", {
+        reservations.forEach(r => {
+            const div = document.createElement("div");
+            div.className = "list-group-item";
+            div.innerHTML = `
+                <div class="fw-semibold">Event: ${r.event_name} <span class="badge bg-info text-dark">${r.status}</span></div>
+                <div class="text-muted small">User: ${r.user_id ? r.user_id.username : 'Unknown'}</div>
+            `;
+            reservationList.appendChild(div);
+        });
+    } catch (err) {
+        console.error("Error loading reservations:", err);
+    }
+}
+
+// --- SUBMIT NEW ITEM ---
+itemForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(itemForm);
+    const payload = {
+        item_name: formData.get("item_name"),
+        category: formData.get("category"),
+        quantity: Number(formData.get("quantity")),
+        available_quantity: Number(formData.get("available_quantity")),
+        description: formData.get("description")
+    };
+
+    const res = await fetch("/api/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
     if (!res.ok) {
-        showMessage(data.error || data.message || "Failed to save", "danger");
+        const errData = await res.json();
+        showMessage(errData.error || "Failed to create item", "danger");
         return;
     }
 
-    userForm.reset();
-    showMessage("User saved!");
-    loadUsers();
+    itemForm.reset();
+    showMessage("Item added successfully!");
+    loadItems();
 });
 
-loadUsers();
+// --- SUBMIT NEW RESERVATION ---
+reservationForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(reservationForm);
+    const payload = {
+        event_name: formData.get("event_name"),
+        items: [{
+            item_id: formData.get("item_id"),
+            quantity: Number(formData.get("res_quantity"))
+        }],
+        event_date: formData.get("event_date"),
+        start_date: formData.get("start_date"),
+        end_date: formData.get("end_date")
+    };
+
+    const res = await fetch("/api/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+        const errData = await res.json();
+        showMessage(errData.error || "Failed to create reservation", "danger");
+        return;
+    }
+
+    reservationForm.reset();
+    showMessage("Reservation submitted!");
+    loadReservations();
+});
+
+// --- DELETE ITEM HELPER ---
+async function deleteItem(id) {
+    const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
+    if (res.ok) {
+        showMessage("Item deleted", "warning");
+        loadItems();
+    } else {
+        showMessage("Failed to delete item (Admin access required)", "danger");
+    }
+}
+
+// Initial load
+loadItems();
+loadReservations();

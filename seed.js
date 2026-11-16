@@ -2,46 +2,56 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 
 const User = require("./models/User");
-const Product = require("./models/Product");
-const Order = require("./models/Order");
+const Item = require("./models/Item");
 
 async function seedData() {
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log("Connected to MongoDB for seeding...");
 
-await mongoose.connect(process.env.MONGO_URI);
+        // Clear existing data
+        await User.deleteMany();
+        await Item.deleteMany();
 
-// Clear existing data
-await User.deleteMany();
-await Product.deleteMany();
-await Order.deleteMany();
+        // Create a test admin user
+        await User.create({
+            username: "TestAdmin",
+            email: "admin@test.com",
+            password: "$2b$10$YourHashedPasswordHerePlaceholder", // or let app handle registration
+            role: "admin"
+        });
 
-// Create users
-const user = await User.create({
-name: "Test User",
-email: "test@test.com"
-});
+        // Create sample inventory items for EVENT-UALLY DONE
+        await Item.create([
+            {
+                item_name: "HD Projector",
+                category: "Audio/Visual",
+                quantity: 5,
+                available_quantity: 5,
+                description: "High-definition portable projector for presentations."
+            },
+            {
+                item_name: "Wireless Microphone",
+                category: "Audio",
+                quantity: 10,
+                available_quantity: 10,
+                description: "Dual channel handheld wireless mic system."
+            },
+            {
+                item_name: "Folding Chairs (Pack of 10)",
+                category: "Furniture",
+                quantity: 25,
+                available_quantity: 25,
+                description: "Durable white plastic folding chairs."
+            }
+        ]);
 
-// Create products
-const product1 = await Product.create({
-name: "Laptop",
-price: 50000,
-createdBy: user._id
-});
-
-const product2 = await Product.create({
-name: "Phone",
-price: 20000,
-createdBy: user._id
-});
-
-// Create order
-await Order.create({
-user: user._id,
-products: [product1._id, product2._id],
-totalAmount: 70000
-});
-
-console.log("Database seeded!");
-process.exit();
+        console.log("Database seeded successfully with EVENT-UALLY DONE items!");
+        process.exit();
+    } catch (err) {
+        console.error("Seeding error:", err);
+        process.exit(1);
+    }
 }
 
 seedData();

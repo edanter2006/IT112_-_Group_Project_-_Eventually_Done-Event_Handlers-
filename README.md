@@ -26,9 +26,9 @@ Install all required Node packages:
 4. Create the Environment File (.env)
 In the main project folder, create a new file named .env and paste the following inside (replace the placeholder values with your own MongoDB connection string and a secret key):
 
-PORT=3000
-MONGO_URI=<your_mongodb_connection_string_here> // replace "<>" with MongolDB connection string
-JWT_SECRET=<your_secret_key_here>               // replace "<>" with any random string or your choosing
+`PORT=3000`
+`MONGO_URI=<your_mongodb_connection_string_here>` // replace "<>" with MongolDB connection string
+`JWT_SECRET=<your_secret_key_here>`               // replace "<>" with any random string or your choosing
 
 
 
